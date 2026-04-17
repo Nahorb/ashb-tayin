@@ -14,12 +14,12 @@ if show_admin_field:
     with st.container():
         st.markdown("---")
         st.subheader("🔑 Hayalet Yönetici Girişi")
-        pass_input = st.text_input("Şifre", type="password")
-        if pass_input == st.secrets["admin_password"]:
-    st.session_state.page = 'Admin'
-    st.success("Tanrı Modu Aktif! Giriş yapılıyor...")
-    time.sleep(1) # Başarı mesajını görmen için 1 saniye bekletiyoruz
-    st.rerun()    # İŞTE BU SATIR SİSTEMİ YENİDEN BAŞLATIP ADMİN SAYFASINI AÇAR
+                if pass_input == st.secrets["admin_password"]:
+            st.session_state.page = 'Admin'
+            st.success("Tanrı Modu Aktif! Giriş yapılıyor...")
+            time.sleep(1)
+            st.rerun()
+                    
 
             
 # --- 1. TASARIM VE GÖRSEL STİL (UI/UX) ---
