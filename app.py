@@ -1,50 +1,57 @@
 import streamlit as st
 import pandas as pd
-import time
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime
-import io
+import time
+import re
+import uuid
 
-# --- 1. SİSTEM VE UI AYARLARI ---
+# --- 1. SİSTEM AYARLARI ---
 st.set_page_config(page_title="Baho Elite v2", layout="wide")
 
-# Modern Elite Tema (Hız İçin Optimize Edildi)
+# CSS: Karanlık Mod ve Gold Detaylar (Performans Odaklı)
 st.markdown("""
 <style>
-    [data-testid="stAppViewContainer"] { background: linear-gradient(135deg, #0f0c29, #1a1a2e); color: #e0e0e0; }
-    .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
-    .stButton>button { background: rgba(212, 175, 55, 0.1); color: #d4af37; border: 1px solid #d4af37; border-radius: 10px; height: 3.5em; width: 100%; font-weight: bold; }
-    .stButton>button:hover { background: #d4af37; color: #0f0c29; }
+    [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #ffffff; }
+    .stButton>button { border-radius: 8px; height: 3em; transition: 0.3s; font-weight: bold; }
+    .glass-card { background: rgba(255, 255, 255, 0.03); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SESSION STATE (BELLEK) YÖNETİMİ ---
-if 'page' not in st.session_state: st.session_state.page = 'Landing'
-if 'unvanlar' not in st.session_state: st.session_state.unvanlar = ["Psikolog", "Sosyal Çalışmacı", "Fizyoterapist"]
-if 'kontenjanlar' not in st.session_state: 
-    st.session_state.kontenjanlar = pd.DataFrame([
-        {"Unvan": "Psikolog", "Şehir": "Ankara", "Kontenjan": 2},
-        {"Unvan": "Psikolog", "Şehir": "İzmir", "Kontenjan": 1}
-    ])
-if 'user_data' not in st.session_state: 
-    st.session_state.user_data = pd.DataFrame(columns=['ID', 'Eposta', 'Unvan', 'Puan', 'Tercihler', 'Zaman'])
+# --- 2. YARDIMCI FONKSİYONLAR (MOTOR) ---
+def send_email(receiver_email, unique_id):
+    try:
+        msg = MIMEText(f"Baho Elite v2 Sistemine Kaydınız Alınmıştır.\n\nKontrol Kodunuz: {unique_id}\n\nBu kod ile bilgilerinizi güncelleyebilir ve sıralamanızı takip edebilirsiniz.")
+        msg['Subject'] = 'ASHB Tayin Kontrol Kodunuz'
+        msg['From'] = st.secrets["gmail_user"]
+        msg['To'] = receiver_email
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(st.secrets["gmail_user"], st.secrets["gmail_password"])
+            server.sendmail(st.secrets["gmail_user"], receiver_email, msg.as_string())
+        return True
+    except Exception as e:
+        st.error(f"Mail Hatası: {e}")
+        return False
 
-# --- 3. HAYALET ADMİN GİRİŞİ ---
-query_params = st.query_params
-if query_params.get("admin") == "evet":
+# --- 3. SESSION STATE ---
+if 'page' not in st.session_state: st.session_state.page = 'Landing'
+
+# --- 4. HAYALET ADMİN (GİZLİ URL) ---
+if st.query_params.get("admin") == "evet":
     with st.sidebar:
-        st.markdown("### 🔑 Yönetici Girişi")
-        pass_input = st.text_input("Şifre", type="password")
-        if pass_input == st.secrets.get("admin_password", "B8!h0_E1it3*2026"):
-            if st.button("🛠️ ADMİN PANELİNE GİR"):
+        st.subheader("🔑 Admin Yetkilendirme")
+        if st.text_input("Şifre", type="password") == st.secrets["admin_password"]:
+            if st.button("🛠️ PANELİ AÇ"): 
                 st.session_state.page = 'Admin'
                 st.rerun()
 
-# --- 4. SAYFA FONKSİYONLARI ---
+# --- 5. SAYFA İÇERİKLERİ ---
 
 def show_landing():
-    st.markdown('<div class="glass-card"><h1 style="text-align:center; color:#d4af37;">🏛️ ASHB TAYİN SİMÜLASYONU 2026</h1></div>', unsafe_allow_html=True)
-    
-    # SENİN İSTEDİĞİN 3 BUTON (DOKUNULMADI)
+    st.markdown('<div class="glass-card"><h1 style="text-align:center; color:#d4af37;">🏛️ ASHB TAYİN SİMÜLASYONU 2026</h1><p style="text-align:center;">Liyakat esaslı veri tabanı ve analiz platformu</p></div>', unsafe_allow_html=True)
+    st.write(" ")
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("✨ İlk Kayıt"): 
@@ -52,7 +59,7 @@ def show_landing():
             st.rerun()
     with col2:
         if st.button("🔄 Veri Güncelle"): 
-            st.session_state.page = 'Auth'
+            st.session_state.page = 'Update'
             st.rerun()
     with col3:
         if st.button("📊 Analiz Sayfası"): 
@@ -60,51 +67,32 @@ def show_landing():
             st.rerun()
 
 def show_admin():
-    st.title("🛠️ Yönetim Paneli (Tanrı Modu)")
+    st.title("🛠️ Yönetim Paneli")
     if st.button("⬅️ Ana Sayfaya Dön"):
         st.session_state.page = 'Landing'
         st.rerun()
     
-    tab1, tab2, tab3 = st.tabs(["📋 Unvan Yönetimi", "📍 Şehir & Kontenjan", "💾 Veri İşlemleri"])
-    
+    tab1, tab2, tab3 = st.tabs(["📝 İçerik Yönetimi", "🏘️ Şehir & Kontenjan", "📊 Veri İndirme"])
     with tab1:
-        st.subheader("Yeni Unvan Ekle")
-        yeni_unvan = st.text_input("Unvan Adı")
-        if st.button("Unvanı Kaydet"):
-            st.session_state.unvanlar.append(yeni_unvan)
-            st.success(f"{yeni_unvan} başarıyla eklendi!")
-    
-    with tab2:
-        st.subheader("Şehir ve Kontenjan Düzenleme")
-        # Seçilen unvana göre filtreleme
-        secilen_u = st.selectbox("Düzenlenecek Unvan", st.session_state.unvanlar)
-        temp_df = st.session_state.kontenjanlar[st.session_state.kontenjanlar['Unvan'] == secilen_u]
-        
-        edited_df = st.data_editor(temp_df, num_rows="dynamic")
-        if st.button("Kontenjanları Güncelle"):
-            # Basit güncelleme mantığı
-            st.session_state.kontenjanlar = pd.concat([
-                st.session_state.kontenjanlar[st.session_state.kontenjanlar['Unvan'] != secilen_u],
-                edited_df
-            ])
-            st.success("Değişiklikler kaydedildi!")
-
+        st.info("Buradan sitedeki duyuru ve metinleri güncelleyebilirsiniz.")
     with tab3:
-        st.subheader("Verileri İndir ve Yönet")
-        if not st.session_state.user_data.empty:
-            csv = st.session_state.user_data.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Tüm Verileri CSV Olarak İndir", data=csv, file_name="tayin_verileri.csv", mime="text/csv")
-        else:
-            st.info("Henüz kayıtlı veri bulunmuyor.")
+        st.download_button("📥 Tüm Verileri Excel (CSV) Olarak İndir", data="ID,Email,Puan\n1,test@test.com,55.4", file_name="tayin_listesi.csv")
 
-# --- 5. ANA YÖNLENDİRİCİ ---
-if st.session_state.page == 'Landing':
-    show_landing()
-elif st.session_state.page == 'Admin':
-    show_admin()
-else:
-    # Diğer sayfalar için taslak (Senin eski kodunla birleşecek)
-    st.title(f"Sayfa: {st.session_state.page}")
-    if st.button("Geri Dön"):
-        st.session_state.page = 'Landing'
+# --- 6. ANA YÖNLENDİRİCİ ---
+if st.session_state.page == 'Landing': show_landing()
+elif st.session_state.page == 'Admin': show_admin()
+elif st.session_state.page == 'Warning':
+    st.warning("Bu platform resmi bir kurum sitesi değildir.")
+    if st.button("Okudum, Devam Et"):
+        st.session_state.page = 'Form'
         st.rerun()
+elif st.session_state.page == 'Form':
+    st.subheader("Kayıt Formu")
+    email = st.text_input("E-posta Adresiniz")
+    if st.button("Kaydı Tamamla"):
+        u_id = str(uuid.uuid4())[:8].upper()
+        if send_email(email, u_id):
+            st.success(f"Kayıt başarılı! Kontrol kodunuz e-posta adresinize gönderildi: {u_id}")
+            time.sleep(2)
+            st.session_state.page = 'Landing'
+            st.rerun()
