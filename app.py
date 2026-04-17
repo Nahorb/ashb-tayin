@@ -6,19 +6,21 @@ from datetime import datetime
 import time
 import re
 
-# Sayfa linkinin sonuna ?admin=evet yazarsan giriş kutusu çıkar
+# --- ADMİN GİRİŞ KONTROLÜ (Hatasız Versiyon) ---
 query_params = st.query_params
 show_admin_field = query_params.get("admin") == "evet"
 
 if show_admin_field:
-    with st.container():
-        st.markdown("---")
-        st.subheader("🔑 Hayalet Yönetici Girişi")
-                if pass_input == st.secrets["admin_password"]:
-            st.session_state.page = 'Admin'
-            st.success("Tanrı Modu Aktif! Giriş yapılıyor...")
-            time.sleep(1)
-            st.rerun()
+    st.markdown("---")
+    st.subheader("🔑 Hayalet Yönetici Girişi")
+    pass_input = st.text_input("Şifre", type="password")
+    if pass_input == st.secrets["admin_password"]:
+        st.session_state.page = 'Admin'
+        st.success("Tanrı Modu Aktif! Giriş yapılıyor...")
+        import time
+        time.sleep(1)
+        st.rerun()
+        
                     
 
             
